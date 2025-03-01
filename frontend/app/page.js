@@ -41,6 +41,7 @@ export default function Home() {
         }
       });
 
+      
       const result = await response.json();
       setAnalysis(result);
     } catch (error) {
