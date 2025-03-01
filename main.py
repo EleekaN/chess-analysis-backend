@@ -64,16 +64,38 @@ def read_root():
 #     except Exception as e:
 #         print(f"Error: {e}")
 #         return None
-    
+
 def analyze_position(fen):
-    """Sends the FEN to Lichess Cloud API for Stockfish analysis."""
+    """Sends the FEN to Lichess Cloud API for Stockfish analysis and processes the response."""
     response = requests.get(f"{LICHESS_API_URL}?fen={fen}&multiPv=3")
     
     if response.status_code != 200:
         return None, f"Lichess API Error: {response.text}"
     
     data = response.json()
-    return data.get("pvs", []), None
+    evaluations = []
+    
+    # Ensure "pvs" key exists in response
+    if "pvs" in data:
+        for pv in data["pvs"]:
+            evaluations.append({
+                "best_move": pv["moves"].split()[0],  # Extract only the first move
+                "full_variation": pv["moves"].split(),  # Store full variation as a list
+                "cp": pv["cp"] if "cp" in pv else None,  # Centipawn value
+                "mate": pv["mate"] if "mate" in pv else None  # Checkmate evaluation
+            })
+    
+    return evaluations, None
+    
+# def analyze_position(fen):
+#     """Sends the FEN to Lichess Cloud API for Stockfish analysis."""
+#     response = requests.get(f"{LICHESS_API_URL}?fen={fen}&multiPv=3")
+    
+#     if response.status_code != 200:
+#         return None, f"Lichess API Error: {response.text}"
+    
+#     data = response.json()
+#     return data.get("pvs", []), None
 
 # def analyze_position(fen):
 #     """Send FEN position to Lichess API for analysis."""
