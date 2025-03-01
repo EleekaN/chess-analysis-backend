@@ -12,20 +12,25 @@ export default function Home() {
     setPgnText(""); // Clear text input when a file is selected
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+
     if (!file && !pgnText) {
       alert("Please upload a PGN file or paste PGN text!");
       return;
     }
 
-    const formData = new FormData();
-    if (file) {
-      formData.append("file", file);
-    } else {
-      formData.append("pgn", pgnText);
-    }
+    // const formData = new FormData();
+    // if (file) {
+    //   formData.append("file", file);
+    // } else {
+    //   formData.append("pgn", pgnText);
+    // }
 
-    setLoading(true);
+    const formData = new FormData();
+    formData.append("pgn", pgnText);  // Ensure pgnText is a valid PGN string
+
+    // setLoading(true);
 
     try {
       const response = await fetch("https://chess-analysis-backend-3z15.onrender.com/analyze", {

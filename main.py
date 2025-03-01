@@ -135,11 +135,14 @@ def analyze_position(fen):
 #     except Exception as e:
 #         print(f"Request failed: {e}")
 #         return None
+from fastapi import FastAPI, File, UploadFile, Form
 
 @app.post("/analyze")
-async def analyze_pgn(request: PGNRequest):
+# async def analyze_pgn(request: PGNRequest):
+async def analyze_pgn(pgn: str = Form(...)):  # Ensure it handles form-data
     """Receives a PGN, parses it, and analyzes the final position."""
-    moves, fen, error = parse_pgn(request.pgn)
+    # moves, fen, error = parse_pgn(request.pgn)
+    moves, fen, error = parse_pgn(pgn)
     if error:
         raise HTTPException(status_code=400, detail=error)
 
