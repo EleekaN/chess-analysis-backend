@@ -1,38 +1,69 @@
 import chess
 import chess.pgn
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+import io
+from pydantic import BaseModel
 
 app = FastAPI()
 
 LICHESS_API_URL = "https://lichess.org/api/cloud-eval"
+
+# ✅ Define PGNRequest model
+class PGNRequest(BaseModel):
+    pgn: str
+
+def parse_pgn(pgn_str):
+    """Parses PGN and extracts moves."""
+    pgn_io = io.StringIO(pgn_str)
+    game = chess.pgn.read_game(pgn_io)
+    if game is None:
+        return None, "Invalid PGN"
+    
+    board = game.board()
+    moves = []
+    for move in game.mainline_moves():
+        moves.append(board.san(move))
+        board.push(move)
+    
+    return moves, None
 
 @app.get("/")
 def read_root():
     return {"message": "Chess Analysis API is running!"}
 
 
+@app.post("/analyze")
+async def analyze_pgn(request: PGNRequest):
+    """Receives a PGN, parses it, and returns a basic response."""
+    moves, error = parse_pgn(request.pgn)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
 
-def parse_pgn(file_path):
-    """Reads a PGN file and extracts moves."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as pgn_file:
-            game = chess.pgn.read_game(pgn_file)
-            if game is None:
-                raise ValueError("Invalid PGN file or empty content.")
+    return {"moves": moves, "message": "PGN parsed successfully"}
 
-            board = game.board()
-            fen_positions = []
 
-            for move in game.mainline_moves():
-                board.push(move)  # Play the move on the board
-                fen_positions.append(board.fen())  # Store FEN after each move
 
-            return fen_positions
+# def parse_pgn(file_path):
+#     """Reads a PGN file and extracts moves."""
+#     try:
+#         with open(file_path, 'r', encoding='utf-8') as pgn_file:
+#             game = chess.pgn.read_game(pgn_file)
+#             if game is None:
+#                 raise ValueError("Invalid PGN file or empty content.")
 
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+#             board = game.board()
+#             fen_positions = []
+
+#             for move in game.mainline_moves():
+#                 board.push(move)  # Play the move on the board
+#                 fen_positions.append(board.fen())  # Store FEN after each move
+
+#             return fen_positions
+
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return None
     
 
 def analyze_position(fen):
