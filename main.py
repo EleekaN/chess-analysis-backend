@@ -26,21 +26,21 @@ def parse_pgn(pgn_str):
         moves.append(board.san(move))
         board.push(move)
     
-    return moves, None
+    return moves, board.fen(), None
 
 @app.get("/")
 def read_root():
     return {"message": "Chess Analysis API is running!"}
 
 
-@app.post("/analyze")
-async def analyze_pgn(request: PGNRequest):
-    """Receives a PGN, parses it, and returns a basic response."""
-    moves, error = parse_pgn(request.pgn)
-    if error:
-        raise HTTPException(status_code=400, detail=error)
+# @app.post("/analyze")
+# async def analyze_pgn(request: PGNRequest):
+#     """Receives a PGN, parses it, and returns a basic response."""
+#     moves, error = parse_pgn(request.pgn)
+#     if error:
+#         raise HTTPException(status_code=400, detail=error)
 
-    return {"moves": moves, "message": "PGN parsed successfully"}
+#     return {"moves": moves, "message": "PGN parsed successfully"}
 
 
 
@@ -65,33 +65,60 @@ async def analyze_pgn(request: PGNRequest):
 #         print(f"Error: {e}")
 #         return None
     
-
 def analyze_position(fen):
-    """Send FEN position to Lichess API for analysis."""
-    try:
-        response = requests.get(f"{LICHESS_API_URL}?fen={fen}")
+    """Sends the FEN to Lichess Cloud API for Stockfish analysis."""
+    response = requests.get(f"{LICHESS_API_URL}?fen={fen}&multiPv=3")
+    
+    if response.status_code != 200:
+        return None, f"Lichess API Error: {response.text}"
+    
+    data = response.json()
+    return data.get("pvs", []), None
+
+# def analyze_position(fen):
+#     """Send FEN position to Lichess API for analysis."""
+#     try:
+#         response = requests.get(f"{LICHESS_API_URL}?fen={fen}")
         
-        if response.status_code == 200:
-            data = response.json()
-            best_moves = data.get("pvs", [{}])[0].get("moves", "").split()
-            best_move = best_moves[0] if best_moves else "Unknown"
+#         if response.status_code == 200:
+#             data = response.json()
+#             best_moves = data.get("pvs", [{}])[0].get("moves", "").split()
+#             best_move = best_moves[0] if best_moves else "Unknown"
 
-            eval_score = data.get("pvs", [{}])[0].get("cp", None)
-            mate = data.get("pvs", [{}])[0].get("mate", None)
+#             eval_score = data.get("pvs", [{}])[0].get("cp", None)
+#             mate = data.get("pvs", [{}])[0].get("mate", None)
 
-            return {
-                "fen": fen,
-                "best_move": best_move,
-                "eval": eval_score,
-                "mate": mate,
-            }
-        else:
-            print(f"Error: Lichess API returned {response.status_code}")
-            return None
+#             return {
+#                 "fen": fen,
+#                 "best_move": best_move,
+#                 "eval": eval_score,
+#                 "mate": mate,
+#             }
+#         else:
+#             print(f"Error: Lichess API returned {response.status_code}")
+#             return None
 
-    except Exception as e:
-        print(f"Request failed: {e}")
-        return None
+#     except Exception as e:
+#         print(f"Request failed: {e}")
+#         return None
+
+@app.post("/analyze")
+async def analyze_pgn(request: PGNRequest):
+    """Receives a PGN, parses it, and analyzes the final position."""
+    moves, fen, error = parse_pgn(request.pgn)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
+    stockfish_eval, error = analyze_position(fen)
+    if error:
+        raise HTTPException(status_code=500, detail=error)
+
+    return {
+        "moves": moves,
+        "final_fen": fen,
+        "evaluation": stockfish_eval
+    }
+
 
 def evaluate_position(eval_score, mate):
     """Convert Stockfish evaluation into user-friendly feedback."""
