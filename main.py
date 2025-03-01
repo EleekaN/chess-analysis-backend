@@ -1,8 +1,17 @@
 import chess
 import chess.pgn
 import requests
+from fastapi import FastAPI
+
+app = FastAPI()
 
 LICHESS_API_URL = "https://lichess.org/api/cloud-eval"
+
+@app.get("/")
+def read_root():
+    return {"message": "Chess Analysis API is running!"}
+
+
 
 def parse_pgn(file_path):
     """Reads a PGN file and extracts moves."""
